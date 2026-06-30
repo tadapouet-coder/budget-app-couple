@@ -1,1 +1,1 @@
-# budget-app-couple
+# budget-pwa
