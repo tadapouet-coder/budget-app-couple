@@ -227,12 +227,20 @@ function applyProfileNames() {
 
 async function fetchUserEmail(token) {
   try {
+
     console.log("TOKEN =", token);
-    const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
+
+    const resp = await fetch(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: {
+          Authorization: 'Bearer ' + token
+        }
+      }
+    );
 
     const data = await resp.json();
+
     console.log("STATUS =", resp.status);
     console.log("DATA =", data);
 
@@ -241,7 +249,7 @@ async function fetchUserEmail(token) {
     applyUserModeAuto(data.email);
 
   } catch (e) {
-    console.error('Erreur récupération email', e);
+    console.error(e);
   }
 }
 
