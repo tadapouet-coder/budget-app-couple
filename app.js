@@ -242,7 +242,7 @@ async function fetchUserEmail(token) {
     const data = await resp.json();
 
     console.log("STATUS =", resp.status);
-    console.log("DATA =", data);
+    console.log("DATA =", JSON.stringify(data, null, 2));
 
     localStorage.setItem('user_email', data.email);
 
