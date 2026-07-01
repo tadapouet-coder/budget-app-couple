@@ -6,7 +6,7 @@ const SPREADSHEET_ID = '1OnFInZoJLwB1PYkzUFiEMnONpgzwXRl7ysf6n3Eue-Q';
 const SCOPES =
 'openid email https://www.googleapis.com/auth/spreadsheets';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
-const APP_VERSION = '2026.06.09-v24.3';
+const APP_VERSION = '2026.06.09-v24.4';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
 let USER_MODE =
   localStorage.getItem('force_user_mode') || 'TOI';
@@ -273,9 +273,6 @@ function applyUserModeAuto(email) {
 
   const { email2 } = getSettings();
 
-  console.log("EMAIL GOOGLE =", email);
-  console.log("EMAIL PARAM =", email2);
-  console.log("MATCH =", email && email2 && email.toLowerCase() === email2.toLowerCase());
 
   if (email && email2 && email.toLowerCase() === email2.toLowerCase()) {
     USER_MODE = 'ELODIE';
