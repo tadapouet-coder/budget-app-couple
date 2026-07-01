@@ -8,8 +8,9 @@ const SCOPES =
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
 const APP_VERSION = '2026.06.09-v24.3';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
-let USER_MODE = 'TOI';
-// mettre 'ELODIE' dans la version pour elle
+let USER_MODE =
+  localStorage.getItem('force_user_mode') || 'TOI';
+
 
 const ZONES = {
   'Épargne':      { 'Revenu':{col:'A',startRow:13}, 'Dépense':{col:'A',startRow:22} },
@@ -157,7 +158,7 @@ function checkAuth() {
   const token = hash.get('access_token');
   if (token) {
     accessToken = token;
-    fetchUserEmail(accessToken);
+    // fetchUserEmail(accessToken);
     history.replaceState(null, '', window.location.pathname);
     localStorage.setItem('gtoken_expiry', Date.now() + 3500 * 1000);
     localStorage.setItem('gtoken', token);
@@ -205,7 +206,22 @@ function showApp() {
   updateMonthNav();
   loadMonth(MONTHS[viewMonth]);
   setTimeout(() => {
+
   applyUserTabs();
+
+  if (USER_MODE === 'ELODIE') {
+    currentCompteFilter = 'Compte Perso Elodie';
+  } else {
+    currentCompteFilter = 'Compte Joint';
+  }
+
+  document.querySelectorAll('.compte-tab').forEach(tab => {
+    tab.classList.toggle(
+      'active',
+      tab.dataset.compte === currentCompteFilter
+    );
+  });
+
 }, 200);
 }
 
@@ -998,6 +1014,8 @@ async function openSettings() {
   document.getElementById('settings-name1').value = s.name1;
   document.getElementById('settings-name2').value = s.name2;
   document.getElementById('settings-email2').value = s.email2;
+  document.getElementById('settings-user-mode').value =
+  localStorage.getItem('force_user_mode') || 'TOI';
   // Chips seuil
   document.querySelectorAll('#chips-seuil .chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.val)===s.seuil));
   // Chips comparaison
@@ -1024,13 +1042,23 @@ async function saveSettingsHandler() {
   const name1 = document.getElementById('settings-name1').value.trim()||'Yoann';
   const name2 = document.getElementById('settings-name2').value.trim()||'Élodie';
   const email2 = document.getElementById('settings-email2').value.trim();
+  const userMode =
+  document.getElementById('settings-user-mode').value;
   const seuil = parseInt(getChipVal('chips-seuil'))||80;
   const comparaison = getChipVal('chips-comparaison')||'prev_month';
   const courses = parseFloat(document.getElementById('budget-courses').value)||500;
   const carburant = parseFloat(document.getElementById('budget-carburant').value)||240;
   const autre = parseFloat(document.getElementById('budget-autre').value)||400;
 
-  saveSettings({name1,name2,email2,seuil,comparaison});
+  saveSettings({
+  name1,
+  name2,
+  email2,
+  seuil,
+  comparaison
+});
+
+setUserMode(userMode);
   const btn=document.getElementById('btn-save-settings'); btn.disabled=true;
   try {
     await saveBudgetsToSheet(getViewMonthName(),courses,carburant,autre);
@@ -1435,6 +1463,43 @@ function updateAppVersionDisplay() {
   if (versionEl) versionEl.textContent = APP_VERSION + ' · ' + DATA_SCHEMA_VERSION;
 }
 
+function setUserMode(mode) {
+
+  USER_MODE = mode;
+
+  localStorage.setItem(
+    'force_user_mode',
+    mode
+  );
+
+  applyUserTabs();
+
+  if (USER_MODE === 'ELODIE') {
+    currentCompteFilter = 'Compte Perso Elodie';
+  } else {
+    currentCompteFilter = 'Compte Joint';
+  }
+
+  document.querySelectorAll('.compte-tab').forEach(tab => {
+    tab.classList.toggle(
+      'active',
+      tab.dataset.compte === currentCompteFilter
+    );
+  });
+
+  const mois = getViewMonthName();
+
+  if (sheetData[mois]) {
+
+    renderTransactions(sheetData[mois]);
+    renderStats(sheetData[mois]);
+    renderChart(mois);
+    loadSoldes(mois);
+
+  }
+
+}
+
 // ============================================================
 // EVENTS
 // ============================================================
@@ -1591,4 +1656,8 @@ function applyUserTabs() {
 // ============================================================
 registerSW();
 updateAppVersionDisplay();
+
+USER_MODE =
+  localStorage.getItem('force_user_mode') || 'TOI';
+
 checkAuth();
