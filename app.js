@@ -231,6 +231,8 @@ async function fetchUserEmail(token) {
     });
 
     const data = await resp.json();
+    console.log("STATUS =", resp.status);
+    console.log("DATA =", data);
 
     localStorage.setItem('user_email', data.email);
 
@@ -245,6 +247,10 @@ function applyUserModeAuto(email) {
 
   const { email2 } = getSettings();
 
+  console.log("EMAIL GOOGLE =", email);
+  console.log("EMAIL PARAM =", email2);
+  console.log("MATCH =", email && email2 && email.toLowerCase() === email2.toLowerCase());
+
   if (email && email2 && email.toLowerCase() === email2.toLowerCase()) {
     USER_MODE = 'ELODIE';
   } else {
@@ -252,15 +258,21 @@ function applyUserModeAuto(email) {
   }
 
   console.log("USER MODE =", USER_MODE);
-  console.log("EMAIL =", email);
 
-  currentCompteFilter = 'Compte Joint';
+  if (USER_MODE === 'ELODIE') {
+    currentCompteFilter = 'Compte Perso Elodie';
+  } else {
+    currentCompteFilter = 'Compte Joint';
+  }
 
   applyUserTabs();
 
-  setTimeout(() => {
-    applyUserTabs();
-  }, 0);
+  document.querySelectorAll('.compte-tab').forEach(tab => {
+    tab.classList.toggle(
+      'active',
+      tab.dataset.compte === currentCompteFilter
+    );
+  });
 
   const mois = getViewMonthName();
 
@@ -270,9 +282,6 @@ function applyUserModeAuto(email) {
     renderChart(mois);
   }
 }
-
-
-
 // ============================================================
 // API SHEETS
 // ============================================================
