@@ -3,7 +3,8 @@
 // ============================================================
 const CLIENT_ID = '917136650964-63auvuts9dg4hbtqr2o7pa1171pmmrr2.apps.googleusercontent.com';
 const SPREADSHEET_ID = '1OnFInZoJLwB1PYkzUFiEMnONpgzwXRl7ysf6n3Eue-Q';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+const SCOPES =
+  'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
 const APP_VERSION = '2026.06.09-v24.3';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
@@ -226,6 +227,7 @@ function applyProfileNames() {
 
 async function fetchUserEmail(token) {
   try {
+    console.log("TOKEN =", token);
     const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: 'Bearer ' + token }
     });
