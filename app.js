@@ -10,6 +10,7 @@ const APP_VERSION = '2026.06.09-v24.4';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
 let USER_MODE =
   localStorage.getItem('force_user_mode') || 'TOI';
+  
 
 
 const ZONES = {
@@ -241,70 +242,9 @@ function applyProfileNames() {
   document.querySelector('.section-title #label-user1') && (document.querySelector('.section-title #label-user1').textContent = name1);
 }
 
-async function fetchUserEmail(token) {
-  try {
-
-    console.log("TOKEN =", token);
-
-    const resp = await fetch(
-      'https://openidconnect.googleapis.com/v1/userinfo',
-      {
-        headers: {
-          Authorization: 'Bearer ' + token
-        }
-      }
-    );
-
-    const data = await resp.json();
-
-    console.log("STATUS =", resp.status);
-    console.log("DATA =", JSON.stringify(data, null, 2));
-
-    localStorage.setItem('user_email', data.email);
-
-    applyUserModeAuto(data.email);
-
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function applyUserModeAuto(email) {
-
-  const { email2 } = getSettings();
 
 
-  if (email && email2 && email.toLowerCase() === email2.toLowerCase()) {
-    USER_MODE = 'ELODIE';
-  } else {
-    USER_MODE = 'TOI';
-  }
 
-  console.log("USER MODE =", USER_MODE);
-
-  if (USER_MODE === 'ELODIE') {
-    currentCompteFilter = 'Compte Perso Elodie';
-  } else {
-    currentCompteFilter = 'Compte Joint';
-  }
-
-  applyUserTabs();
-
-  document.querySelectorAll('.compte-tab').forEach(tab => {
-    tab.classList.toggle(
-      'active',
-      tab.dataset.compte === currentCompteFilter
-    );
-  });
-
-  const mois = getViewMonthName();
-
-  if (sheetData[mois]) {
-    renderTransactions(sheetData[mois]);
-    renderStats(sheetData[mois]);
-    renderChart(mois);
-  }
-}
 // ============================================================
 // API SHEETS
 // ============================================================
@@ -1013,6 +953,12 @@ async function openSettings() {
   document.getElementById('settings-email2').value = s.email2;
   document.getElementById('settings-user-mode').value =
   localStorage.getItem('force_user_mode') || 'TOI';
+
+  document.getElementById('settings-pwd-toi').value = '';
+document.getElementById('settings-pwd-elodie').value = '';
+
+ 
+
   // Chips seuil
   document.querySelectorAll('#chips-seuil .chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.val)===s.seuil));
   // Chips comparaison
@@ -1036,34 +982,102 @@ async function openSettings() {
 function closeSettings() { document.getElementById('modal-settings').classList.remove('open'); }
 
 async function saveSettingsHandler() {
-  const name1 = document.getElementById('settings-name1').value.trim()||'Yoann';
-  const name2 = document.getElementById('settings-name2').value.trim()||'Élodie';
+
+  const name1 = document.getElementById('settings-name1').value.trim() || 'Yoann';
+  const name2 = document.getElementById('settings-name2').value.trim() || 'Élodie';
   const email2 = document.getElementById('settings-email2').value.trim();
+
   const userMode =
-  document.getElementById('settings-user-mode').value;
-  const seuil = parseInt(getChipVal('chips-seuil'))||80;
-  const comparaison = getChipVal('chips-comparaison')||'prev_month';
-  const courses = parseFloat(document.getElementById('budget-courses').value)||500;
-  const carburant = parseFloat(document.getElementById('budget-carburant').value)||240;
-  const autre = parseFloat(document.getElementById('budget-autre').value)||400;
+    document.getElementById('settings-user-mode').value;
 
-  saveSettings({
-  name1,
-  name2,
-  email2,
-  seuil,
-  comparaison
-});
+    const pwdToi =
+  document.getElementById('settings-pwd-toi').value.trim();
 
-setUserMode(userMode);
-  const btn=document.getElementById('btn-save-settings'); btn.disabled=true;
+const pwdElodie =
+  document.getElementById('settings-pwd-elodie').value.trim();
+
+  const seuil =
+    parseInt(getChipVal('chips-seuil')) || 80;
+
+  const comparaison =
+    getChipVal('chips-comparaison') || 'prev_month';
+
+  const courses =
+    parseFloat(document.getElementById('budget-courses').value) || 500;
+
+  const carburant =
+    parseFloat(document.getElementById('budget-carburant').value) || 240;
+
+  const autre =
+    parseFloat(document.getElementById('budget-autre').value) || 400;
+
+  const btn = document.getElementById('btn-save-settings');
+  btn.disabled = true;
+
   try {
-    await saveBudgetsToSheet(getViewMonthName(),courses,carburant,autre);
-    closeSettings(); showToast('✅ Paramètres enregistrés !');
+
+    // 🔒 Changement de profil protégé par mot de passe
+    if (userMode !== USER_MODE) {
+
+      const pwd = prompt(
+        `Mot de passe requis pour accéder au profil ${
+          userMode === 'TOI' ? 'Yoann' : 'Élodie'
+        }`
+      );
+
+      const expectedPassword =
+  localStorage.getItem('pwd_' + userMode);
+
+if (expectedPassword && pwd !== expectedPassword) {
+
+        showToast('❌ Mot de passe incorrect');
+
+        btn.disabled = false;
+        return;
+      }
+
+      setUserMode(userMode);
+    }
+
+    // Sauvegarde des paramètres
+    saveSettings({
+      name1,
+      name2,
+      email2,
+      seuil,
+      comparaison
+    });
+localStorage.setItem('pwd_TOI', pwdToi);
+localStorage.setItem('pwd_ELODIE', pwdElodie);
+
+    // Sauvegarde budgets
+    await saveBudgetsToSheet(
+      getViewMonthName(),
+      courses,
+      carburant,
+      autre
+    );
+
+    closeSettings();
+
+    showToast('✅ Paramètres enregistrés !');
+
     applyProfileNames();
-    sheetData={}; await loadMonth(getViewMonthName());
-  } catch(e) { showToast('❌ '+e.message);
-  } finally { btn.disabled=false; }
+
+    sheetData = {};
+
+    await loadMonth(getViewMonthName());
+
+  } catch (e) {
+
+    showToast('❌ ' + e.message);
+
+  } finally {
+
+    btn.disabled = false;
+
+  }
+
 }
 
 // ============================================================
