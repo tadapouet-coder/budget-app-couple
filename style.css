@@ -162,24 +162,22 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 }
 
 .tx-swipe.open .tx-item {
-  transform: translateX(-96px);
+  transform: translateX(-176px);
 }
 
 .tx-actions {
   position: absolute;
   inset: 0 0 0 auto;
-  width: 96px;
+  width: 176px;
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
-  background: var(--red);
   z-index: 1;
 }
 
 .tx-action-btn {
-  width: 96px;
+  width: 88px;
   border: none;
-  background: var(--red);
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -194,6 +192,14 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 
 .tx-action-btn i {
   font-size: 18px;
+}
+
+.tx-edit {
+  background: var(--blue);
+}
+
+.tx-delete {
+  background: var(--red);
 }
 
 /* ANNUEL */

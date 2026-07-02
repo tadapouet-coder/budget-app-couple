@@ -64,6 +64,7 @@ let sheetData = {};
 let viewMonth = new Date().getMonth();
 let chartInstance = null;
 let txActionMap = {};
+let editingTransaction = null;
 
 // SETTINGS (localStorage)
 function getSettings() {
@@ -595,6 +596,113 @@ function getColsForCompte(compte) {
   return null;
 }
 
+function getTypeForCompteRow(compte, rowIndex) {
+
+  if (compte === 'Épargne') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'Revenu';
+    if (rowIndex >= 20 && rowIndex <= 37) return 'Dépense';
+  }
+
+  if (compte === 'Compte Perso') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'Revenu';
+    if (rowIndex >= 20 && rowIndex <= 42) return 'Charge fixe';
+    if (rowIndex >= 45 && rowIndex <= 135) return 'Charge variable';
+  }
+
+  if (compte === 'Compte Joint') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'Revenu';
+    if (rowIndex >= 20 && rowIndex <= 42) return 'Charge fixe';
+    if (rowIndex >= 48 && rowIndex <= 135) return 'Charge variable';
+  }
+
+  if (compte === 'Compte Perso Elodie') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'Revenu';
+    if (rowIndex >= 20 && rowIndex <= 42) return 'Charge fixe';
+    if (rowIndex >= 45 && rowIndex <= 135) return 'Charge variable';
+  }
+
+  return 'Charge variable';
+}
+
+function setChipValue(groupId, value) {
+  const group = document.getElementById(groupId);
+
+  if (!group) return;
+
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.classList.toggle(
+      'selected',
+      chip.dataset.val === value
+    );
+  });
+}
+
+function toInputDateValue(dateValue) {
+  const d = parseDate(dateValue);
+
+  if (!d || isNaN(d)) {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${y}-${m}-${day}`;
+}
+
+function openEditTransaction(key) {
+
+  const tx = txActionMap[key];
+
+  if (!tx) {
+    showToast('❌ Opération introuvable');
+    return;
+  }
+
+  const type = getTypeForCompteRow(
+    tx.compte,
+    tx.rowIndex
+  );
+
+  editingTransaction = {
+    ...tx,
+    type
+  };
+
+  document.getElementById('input-date').value =
+    toInputDateValue(tx.date);
+
+  document.getElementById('input-mois').value =
+    getViewMonthName();
+
+  document.getElementById('input-montant').value =
+    Math.abs(tx.mnt);
+
+  document.getElementById('input-libelle').value =
+    tx.lib || '';
+
+  setChipValue('chips-compte', tx.compte);
+
+  updateTypeChoicesForCompte();
+
+  setChipValue('chips-type', type);
+
+  if (tx.cat) {
+    setChipValue('chips-cat', tx.cat);
+  }
+
+  const submitLabel = document.getElementById('btn-submit-label');
+
+  if (submitLabel) {
+    submitLabel.textContent = 'Modifier';
+  }
+
+  document.getElementById('submit-error').classList.add('hidden');
+
+  document.getElementById('modal').classList.add('open');
+}
+
 async function deleteTransactionByKey(key) {
   const tx = txActionMap[key];
 
@@ -739,10 +847,17 @@ function renderTransactions(rows) {
       <div class="tx-swipe" data-key="${escHtml(key)}">
 
         <div class="tx-actions">
+
+          <button class="tx-action-btn tx-edit" data-key="${escHtml(key)}">
+            <i class="ti ti-edit"></i>
+            Modifier
+          </button>
+
           <button class="tx-action-btn tx-delete" data-key="${escHtml(key)}">
             <i class="ti ti-trash"></i>
             Supprimer
           </button>
+
         </div>
 
         <div class="tx-item">
@@ -1765,22 +1880,35 @@ async function findFirstEmptyTableRow(mois, compte, type) {
 // ============================================================
 // AJOUT DÉPENSE
 // ============================================================
+
 async function submitDepense() {
-  const compte=getChipVal('chips-compte'), type=getChipVal('chips-type');
-  const montant=parseFloat(document.getElementById('input-montant').value);
-  const libelle=document.getElementById('input-libelle').value.trim();
-  const date=document.getElementById('input-date').value;
-  
-let categorie = getChipVal('chips-cat');
 
-// ✅ sécurité : recalcul au moment du submit
-const autoCat = autoCategorieSmart(libelle);
+  const selectedCompte = getChipVal('chips-compte');
+  const selectedType = getChipVal('chips-type');
 
-if (autoCat) {
-  categorie = autoCat;
-}
+  const compte = editingTransaction
+    ? editingTransaction.compte
+    : selectedCompte;
 
-  const mois=document.getElementById('input-mois').value;
+  const type = editingTransaction
+    ? editingTransaction.type
+    : selectedType;
+
+  const montant = parseFloat(document.getElementById('input-montant').value);
+  const libelle = document.getElementById('input-libelle').value.trim();
+  const date = document.getElementById('input-date').value;
+
+  let categorie = getChipVal('chips-cat');
+
+  // ✅ sécurité : recalcul au moment du submit
+  const autoCat = autoCategorieSmart(libelle);
+
+  if (autoCat) {
+    categorie = autoCat;
+  }
+
+  const mois = document.getElementById('input-mois').value;
+
   const errEl=document.getElementById('submit-error');
   if(!montant||isNaN(montant)){errEl.textContent='Montant invalide';errEl.classList.remove('hidden');return;}
   if(!libelle){errEl.textContent='Libellé requis';errEl.classList.remove('hidden');return;}
@@ -1796,23 +1924,43 @@ if (autoCat) {
     const table = TABLES[compte] && TABLES[compte][type];
     if (!table) throw new Error(`Tableau introuvable pour ${compte} / ${type}`);
 
-    const targetRow = await findFirstEmptyTableRow(mois, compte, type);
-    if (!targetRow) {
-      btn.disabled=false;
-      document.getElementById('btn-submit-label').textContent='Enregistrer';
-      return;
-    }
+    let targetRow;
 
-    const endCol = offsetCol(table.startCol, row.length - 1);
-    const result = await sheetsUpdate(`${mois}!${table.startCol}${targetRow}:${endCol}${targetRow}`, [row]);
+if (editingTransaction) {
+  targetRow = editingTransaction.sheetRow;
+} else {
+  targetRow = await findFirstEmptyTableRow(mois, compte, type);
+}
+
+if (!targetRow) {
+  btn.disabled = false;
+  document.getElementById('btn-submit-label').textContent = 'Enregistrer';
+  return;
+}
+
+const endCol = offsetCol(table.startCol, row.length - 1);
+
+const result = await sheetsUpdate(
+  `${mois}!${table.startCol}${targetRow}:${endCol}${targetRow}`,
+  [row]
+);
     if (!result) {
       btn.disabled=false;
       document.getElementById('btn-submit-label').textContent='Enregistrer';
       return;
     }
     if(navigator.vibrate) navigator.vibrate(50);
-    closeModal(); showToast('✅ Enregistré !');
-    sheetData={}; await loadMonth(mois);
+    closeModal();
+
+showToast(
+  editingTransaction ? '✅ Opération modifiée !' : '✅ Enregistré !'
+);
+
+editingTransaction = null;
+
+sheetData = {};
+
+await loadMonth(mois);
   } catch(e) {errEl.textContent='Erreur: '+e.message;errEl.classList.remove('hidden');
   } finally {btn.disabled=false;document.getElementById('btn-submit-label').textContent='Enregistrer';}
 }
@@ -1931,7 +2079,17 @@ if (firstVisible) {
 }
 
 
-function closeModal(){document.getElementById('modal').classList.remove('open');}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+
+  editingTransaction = null;
+
+  const submitLabel = document.getElementById('btn-submit-label');
+
+  if (submitLabel) {
+    submitLabel.textContent = 'Enregistrer';
+  }
+}
 
 
 function updateTypeChoicesForCompte() {
@@ -2069,7 +2227,9 @@ function initTransactionSwipeEvents() {
     const dx = endX - startX;
 
     document.querySelectorAll('.tx-swipe.open').forEach(el => {
-      if (el !== currentSwipe) el.classList.remove('open');
+      if (el !== currentSwipe) {
+        el.classList.remove('open');
+      }
     });
 
     if (dx < -50) {
@@ -2082,13 +2242,22 @@ function initTransactionSwipeEvents() {
   }, { passive: true });
 
   container.addEventListener('click', e => {
+
+    const editBtn = e.target.closest('.tx-edit');
+
+    if (editBtn) {
+      const key = editBtn.dataset.key;
+      openEditTransaction(key);
+      return;
+    }
+
     const delBtn = e.target.closest('.tx-delete');
 
-    if (!delBtn) return;
+    if (delBtn) {
+      const key = delBtn.dataset.key;
+      deleteTransactionByKey(key);
+    }
 
-    const key = delBtn.dataset.key;
-
-    deleteTransactionByKey(key);
   });
 }
 
