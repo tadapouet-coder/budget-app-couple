@@ -1204,19 +1204,26 @@ async function prepareNextMonth() {
     if(!duplicateResp.ok) throw new Error('Erreur duplication: '+duplicateResp.status);
 
     // 2. Récupérer les soldes fin de mois à reporter dans la ligne 13 du nouvel onglet.
-    const soldeResp=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=${encodeURIComponent(moisActuel+'!C5')}&ranges=${encodeURIComponent(moisActuel+'!I5')}&ranges=${encodeURIComponent(moisActuel+'!P5')}&valueRenderOption=UNFORMATTED_VALUE`,{headers:{Authorization:'Bearer '+accessToken}});
+    const soldeResp = await fetch(
+  `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=${encodeURIComponent(moisActuel+'!C5')}&ranges=${encodeURIComponent(moisActuel+'!I5')}&ranges=${encodeURIComponent(moisActuel+'!P5')}&ranges=${encodeURIComponent(moisActuel+'!Y5')}&valueRenderOption=UNFORMATTED_VALUE`,
+  { headers:{ Authorization:'Bearer '+accessToken } }
+);
     if(!soldeResp.ok) throw new Error('Erreur lecture soldes: '+soldeResp.status);
     const soldeJson=await soldeResp.json(); const vrs=soldeJson.valueRanges||[];
     const sE=parseFloat(vrs[0]?.values?.[0]?.[0])||0;
     const sP=parseFloat(vrs[1]?.values?.[0]?.[0])||0;
     const sJ=parseFloat(vrs[2]?.values?.[0]?.[0])||0;
+    const sElodie = parseFloat(vrs[3]?.values?.[0]?.[0]) || 0;
 
     // 3. Lire, depuis l'onglet dupliqué, les lignes à conserver en changeant les dates.
     // - Ancien solde Épargne : A13:C13, date +1 mois, libellé conservé, montant remplacé par le report.
     // - Revenus Perso : H13:J30, dates +1 mois, libellés/montants conservés, J13 remplacé par le report.
     // - Revenus Joint : O13:Q30, dates +1 mois, libellés/montants conservés, Q13 remplacé par le report.
     // - Charges fixes : H33:J55 et O33:Q55, dates +1 mois.
-    const keptResp=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=${encodeURIComponent(moisSuivant+'!A13:C13')}&ranges=${encodeURIComponent(moisSuivant+'!H13:J30')}&ranges=${encodeURIComponent(moisSuivant+'!O13:Q30')}&ranges=${encodeURIComponent(moisSuivant+'!H33:J55')}&ranges=${encodeURIComponent(moisSuivant+'!O33:Q55')}&valueRenderOption=FORMATTED_VALUE`,{headers:{Authorization:'Bearer '+accessToken}});
+    const keptResp = await fetch(
+  `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=${encodeURIComponent(moisSuivant+'!A13:C13')}&ranges=${encodeURIComponent(moisSuivant+'!H13:J30')}&ranges=${encodeURIComponent(moisSuivant+'!O13:Q30')}&ranges=${encodeURIComponent(moisSuivant+'!X13:Z30')}&ranges=${encodeURIComponent(moisSuivant+'!H33:J55')}&ranges=${encodeURIComponent(moisSuivant+'!O33:Q55')}&ranges=${encodeURIComponent(moisSuivant+'!X33:Z55')}&valueRenderOption=FORMATTED_VALUE`,
+  { headers:{ Authorization:'Bearer '+accessToken } }
+);
     if(!keptResp.ok) throw new Error('Erreur lecture lignes conservées: '+keptResp.status);
     const keptJson=await keptResp.json();
 
@@ -1235,8 +1242,27 @@ async function prepareNextMonth() {
       return row;
     });
 
-    const fixesPerso=(keptJson.valueRanges?.[3]?.values||[]).map(r=>r?.[0]?[addMonths(r[0],1),r[1]||'',r[2]||'']:r);
-    const fixesJoint=(keptJson.valueRanges?.[4]?.values||[]).map(r=>r?.[0]?[addMonths(r[0],1),r[1]||'',r[2]||'']:r);
+    const revenusElodie = (keptJson.valueRanges?.[3]?.values || []).map((r, idx) => {
+  const row = r?.[0]
+    ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+    : ['', r?.[1] || '', r?.[2] || ''];
+
+  if (idx === 0) row[2] = sElodie;
+
+  return row;
+});
+
+    const fixesPerso = (keptJson.valueRanges?.[4]?.values || []).map(r =>
+  r?.[0] ? [addMonths(r[0],1), r[1] || '', r[2] || ''] : r
+);
+
+const fixesJoint = (keptJson.valueRanges?.[5]?.values || []).map(r =>
+  r?.[0] ? [addMonths(r[0],1), r[1] || '', r[2] || ''] : r
+);
+
+const fixesElodie = (keptJson.valueRanges?.[6]?.values || []).map(r =>
+  r?.[0] ? [addMonths(r[0],1), r[1] || '', r[2] || ''] : r
+);
 
     // 4. Mettre à jour le nom du mois, les reports, les revenus conservés et les charges fixes décalées.
     const updateResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,{
@@ -1244,10 +1270,13 @@ async function prepareNextMonth() {
       body:JSON.stringify({valueInputOption:'USER_ENTERED',data:[
         {range:`${moisSuivant}!B1`,values:[[moisSuivant]]},
         {range:`${moisSuivant}!A13:C13`,values:epargneReport},
-        ...(revenusPerso.length?[{range:`${moisSuivant}!H13:J30`,values:revenusPerso}]:[]),
-        ...(revenusJoint.length?[{range:`${moisSuivant}!O13:Q30`,values:revenusJoint}]:[]),
-        ...(fixesPerso.length?[{range:`${moisSuivant}!H33:J55`,values:fixesPerso}]:[]),
-        ...(fixesJoint.length?[{range:`${moisSuivant}!O33:Q55`,values:fixesJoint}]:[]),
+        ...(revenusPerso.length ? [{ range:`${moisSuivant}!H13:J30`, values:revenusPerso }] : []),
+...(revenusJoint.length ? [{ range:`${moisSuivant}!O13:Q30`, values:revenusJoint }] : []),
+...(revenusElodie.length ? [{ range:`${moisSuivant}!X13:Z30`, values:revenusElodie }] : []),
+
+...(fixesPerso.length ? [{ range:`${moisSuivant}!H33:J55`, values:fixesPerso }] : []),
+...(fixesJoint.length ? [{ range:`${moisSuivant}!O33:Q55`, values:fixesJoint }] : []),
+...(fixesElodie.length ? [{ range:`${moisSuivant}!X33:Z55`, values:fixesElodie }] : []),
       ]})
     });
     if(!updateResp.ok) throw new Error('Erreur mise à jour mois suivant: '+updateResp.status);
@@ -1263,6 +1292,7 @@ async function prepareNextMonth() {
         `${moisSuivant}!A33:D50`,  // Épargne dépenses
         `${moisSuivant}!H58:K148`, // Perso charges variables
         `${moisSuivant}!O61:R148`  // Joint charges variables réelles
+        `${moisSuivant}!X58:AA148 `  // Élodie charges variables réelles
       ]})
     });
     if(!clearResp.ok) throw new Error('Erreur nettoyage mois suivant: '+clearResp.status);
