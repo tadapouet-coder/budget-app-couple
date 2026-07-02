@@ -1175,138 +1175,341 @@ async function sheetExists(name) {
   } catch(e){return false;}
 }
 
-function addMonths(dateStr,n) {
-  if(!dateStr||typeof dateStr!=='string') return dateStr;
-  const parts=dateStr.split('/'); if(parts.length!==3) return dateStr;
-  const [d,m,y]=parts.map(Number);
-  const dt=new Date(y,m-1+n,d);
-  return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+function addMonths(dateStr, n) {
+  if (!dateStr) return dateStr;
+
+  if (typeof dateStr !== 'string') return dateStr;
+
+  const parts = dateStr.split('/');
+
+  if (parts.length !== 3) return dateStr;
+
+  const d = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const y = parseInt(parts[2], 10);
+
+  if (!d || !m || !y) return dateStr;
+
+  const dt = new Date(y, m - 1 + n, d);
+
+  return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
 }
 
 
 async function prepareNextMonth() {
-  const moisActuel=getCurrentMonthName(), moisSuivant=getNextMonthName();
-  const btn=document.getElementById('btn-prepare-month');
-  btn.disabled=true; document.getElementById('btn-prepare-label').textContent='Préparation...';
+
+  const moisActuel = getCurrentMonthName();
+  const moisSuivant = getNextMonthName();
+
+  const btn = document.getElementById('btn-prepare-month');
+  btn.disabled = true;
+
+  document.getElementById('btn-prepare-label').textContent = 'Préparation...';
+
+  const parseMoney = (v) => {
+    if (v === null || v === undefined || v === '') return 0;
+    if (typeof v === 'number') return v;
+
+    return parseFloat(
+      String(v)
+        .replace(/[\u00a0\u202f ]/g, '')
+        .replace(/€/g, '')
+        .replace(/,/g, '.')
+        .replace(/[^0-9.\-]/g, '')
+    ) || 0;
+  };
+
+  const buildBatchGetUrl = (ranges, valueRenderOption = 'FORMATTED_VALUE') => {
+    const params = new URLSearchParams();
+
+    ranges.forEach(r => {
+      params.append('ranges', r);
+    });
+
+    params.set('valueRenderOption', valueRenderOption);
+
+    return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${params.toString()}`;
+  };
 
   try {
-    // 1. Récupérer l'onglet du mois actuel et dupliquer l'onglet.
-    const metaResp=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties`,{headers:{Authorization:'Bearer '+accessToken}});
-    if(!metaResp.ok) throw new Error('Erreur métadonnées: '+metaResp.status);
-    const meta=await metaResp.json();
-    const cur=meta.sheets.find(s=>s.properties.title===moisActuel);
-    if(!cur) throw new Error('Onglet '+moisActuel+' introuvable');
 
-    const duplicateResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,{
-      method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},
-      body:JSON.stringify({requests:[{duplicateSheet:{sourceSheetId:cur.properties.sheetId,insertSheetIndex:cur.properties.index+1,newSheetName:moisSuivant}}]})
-    });
-    if(!duplicateResp.ok) throw new Error('Erreur duplication: '+duplicateResp.status);
+    // 1. Récupérer l'onglet du mois actuel
+    const metaResp = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties`,
+      {
+        headers: {
+          Authorization: 'Bearer ' + accessToken
+        }
+      }
+    );
 
-    // 2. Récupérer les soldes fin de mois à reporter dans la ligne 13 du nouvel onglet.
+    if (!metaResp.ok) {
+      throw new Error('Erreur métadonnées: ' + metaResp.status);
+    }
+
+    const meta = await metaResp.json();
+
+    const cur = meta.sheets.find(
+      s => s.properties.title === moisActuel
+    );
+
+    if (!cur) {
+      throw new Error('Onglet ' + moisActuel + ' introuvable');
+    }
+
+    // 2. Dupliquer l'onglet
+    const duplicateResp = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requests: [
+            {
+              duplicateSheet: {
+                sourceSheetId: cur.properties.sheetId,
+                insertSheetIndex: cur.properties.index + 1,
+                newSheetName: moisSuivant
+              }
+            }
+          ]
+        })
+      }
+    );
+
+    if (!duplicateResp.ok) {
+      throw new Error('Erreur duplication: ' + duplicateResp.status);
+    }
+
+    // 3. Lire les soldes fin de mois à reporter
+    const soldeRanges = [
+      `${moisActuel}!C5`, // Épargne
+      `${moisActuel}!I5`, // Perso Yoann
+      `${moisActuel}!P5`, // Joint
+      `${moisActuel}!Y5`  // Perso Élodie
+    ];
+
     const soldeResp = await fetch(
-  `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=${encodeURIComponent(moisActuel+'!C5')}&ranges=${encodeURIComponent(moisActuel+'!I5')}&ranges=${encodeURIComponent(moisActuel+'!P5')}&ranges=${encodeURIComponent(moisActuel+'!Y5')}&valueRenderOption=UNFORMATTED_VALUE`,
-  { headers:{ Authorization:'Bearer '+accessToken } }
-);
-    if(!soldeResp.ok) throw new Error('Erreur lecture soldes: '+soldeResp.status);
-    const soldeJson=await soldeResp.json(); const vrs=soldeJson.valueRanges||[];
-    const sE=parseFloat(vrs[0]?.values?.[0]?.[0])||0;
-    const sP=parseFloat(vrs[1]?.values?.[0]?.[0])||0;
-    const sJ=parseFloat(vrs[2]?.values?.[0]?.[0])||0;
-    const sElodie = parseFloat(vrs[3]?.values?.[0]?.[0]) || 0;
+      buildBatchGetUrl(soldeRanges, 'FORMATTED_VALUE'),
+      {
+        headers: {
+          Authorization: 'Bearer ' + accessToken
+        }
+      }
+    );
 
-    // 3. Lire, depuis l'onglet dupliqué, les lignes à conserver en changeant les dates.
-    // - Ancien solde Épargne : A13:C13, date +1 mois, libellé conservé, montant remplacé par le report.
-    // - Revenus Perso : H13:J30, dates +1 mois, libellés/montants conservés, J13 remplacé par le report.
-    // - Revenus Joint : O13:Q30, dates +1 mois, libellés/montants conservés, Q13 remplacé par le report.
-    // - Charges fixes : H33:J55 et O33:Q55, dates +1 mois.
+    if (!soldeResp.ok) {
+      throw new Error('Erreur lecture soldes: ' + soldeResp.status);
+    }
+
+    const soldeJson = await soldeResp.json();
+    const vrs = soldeJson.valueRanges || [];
+
+    const sE = parseMoney(vrs[0]?.values?.[0]?.[0]);
+    const sP = parseMoney(vrs[1]?.values?.[0]?.[0]);
+    const sJ = parseMoney(vrs[2]?.values?.[0]?.[0]);
+    const sElodie = parseMoney(vrs[3]?.values?.[0]?.[0]);
+
+    // 4. Lire les lignes à conserver depuis l'onglet déjà dupliqué
+    const keptRanges = [
+      `${moisSuivant}!A13:C13`,   // Épargne ancien solde
+      `${moisSuivant}!H13:J30`,   // Revenus Perso Yoann
+      `${moisSuivant}!O13:Q30`,   // Revenus Joint
+      `${moisSuivant}!X13:Z30`,   // Revenus Perso Élodie
+      `${moisSuivant}!H33:J55`,   // Charges fixes Yoann
+      `${moisSuivant}!O33:Q55`,   // Charges fixes Joint
+      `${moisSuivant}!X33:Z55`    // Charges fixes Élodie
+    ];
+
     const keptResp = await fetch(
-  `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=${encodeURIComponent(moisSuivant+'!A13:C13')}&ranges=${encodeURIComponent(moisSuivant+'!H13:J30')}&ranges=${encodeURIComponent(moisSuivant+'!O13:Q30')}&ranges=${encodeURIComponent(moisSuivant+'!X13:Z30')}&ranges=${encodeURIComponent(moisSuivant+'!H33:J55')}&ranges=${encodeURIComponent(moisSuivant+'!O33:Q55')}&ranges=${encodeURIComponent(moisSuivant+'!X33:Z55')}&valueRenderOption=FORMATTED_VALUE`,
-  { headers:{ Authorization:'Bearer '+accessToken } }
-);
-    if(!keptResp.ok) throw new Error('Erreur lecture lignes conservées: '+keptResp.status);
-    const keptJson=await keptResp.json();
+      buildBatchGetUrl(keptRanges, 'FORMATTED_VALUE'),
+      {
+        headers: {
+          Authorization: 'Bearer ' + accessToken
+        }
+      }
+    );
 
-    const oldEpargne = (keptJson.valueRanges?.[0]?.values||[])[0] || [];
-    const epargneReport = [[oldEpargne[0] ? addMonths(oldEpargne[0],1) : '', oldEpargne[1] || 'Ancien Solde', sE]];
+    if (!keptResp.ok) {
+      throw new Error('Erreur lecture lignes conservées: ' + keptResp.status);
+    }
 
-    const revenusPerso=(keptJson.valueRanges?.[1]?.values||[]).map((r,idx)=>{
-      const row = r?.[0] ? [addMonths(r[0],1), r[1]||'', r[2]||''] : ['', r?.[1]||'', r?.[2]||''];
-      if (idx === 0) row[2] = sP;
-      return row;
-    });
+    const keptJson = await keptResp.json();
 
-    const revenusJoint=(keptJson.valueRanges?.[2]?.values||[]).map((r,idx)=>{
-      const row = r?.[0] ? [addMonths(r[0],1), r[1]||'', r[2]||''] : ['', r?.[1]||'', r?.[2]||''];
-      if (idx === 0) row[2] = sJ;
-      return row;
-    });
+    // Épargne ancien solde
+    const oldEpargne =
+      (keptJson.valueRanges?.[0]?.values || [])[0] || [];
 
-    const revenusElodie = (keptJson.valueRanges?.[3]?.values || []).map((r, idx) => {
-  const row = r?.[0]
-    ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
-    : ['', r?.[1] || '', r?.[2] || ''];
+    const epargneReport = [
+      [
+        oldEpargne[0] ? addMonths(oldEpargne[0], 1) : '',
+        oldEpargne[1] || 'Ancien Solde',
+        sE
+      ]
+    ];
 
-  if (idx === 0) row[2] = sElodie;
+    // Revenus Yoann
+    const revenusPerso =
+      (keptJson.valueRanges?.[1]?.values || []).map((r, idx) => {
+        const row = r?.[0]
+          ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+          : ['', r?.[1] || '', r?.[2] || ''];
 
-  return row;
-});
+        if (idx === 0) row[2] = sP;
 
-    const fixesPerso = (keptJson.valueRanges?.[4]?.values || []).map(r =>
-  r?.[0] ? [addMonths(r[0],1), r[1] || '', r[2] || ''] : r
-);
+        return row;
+      });
 
-const fixesJoint = (keptJson.valueRanges?.[5]?.values || []).map(r =>
-  r?.[0] ? [addMonths(r[0],1), r[1] || '', r[2] || ''] : r
-);
+    // Revenus Joint
+    const revenusJoint =
+      (keptJson.valueRanges?.[2]?.values || []).map((r, idx) => {
+        const row = r?.[0]
+          ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+          : ['', r?.[1] || '', r?.[2] || ''];
 
-const fixesElodie = (keptJson.valueRanges?.[6]?.values || []).map(r =>
-  r?.[0] ? [addMonths(r[0],1), r[1] || '', r[2] || ''] : r
-);
+        if (idx === 0) row[2] = sJ;
 
-    // 4. Mettre à jour le nom du mois, les reports, les revenus conservés et les charges fixes décalées.
-    const updateResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,{
-      method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},
-      body:JSON.stringify({valueInputOption:'USER_ENTERED',data:[
-        {range:`${moisSuivant}!B1`,values:[[moisSuivant]]},
-        {range:`${moisSuivant}!A13:C13`,values:epargneReport},
-        ...(revenusPerso.length ? [{ range:`${moisSuivant}!H13:J30`, values:revenusPerso }] : []),
-...(revenusJoint.length ? [{ range:`${moisSuivant}!O13:Q30`, values:revenusJoint }] : []),
-...(revenusElodie.length ? [{ range:`${moisSuivant}!X13:Z30`, values:revenusElodie }] : []),
+        return row;
+      });
 
-...(fixesPerso.length ? [{ range:`${moisSuivant}!H33:J55`, values:fixesPerso }] : []),
-...(fixesJoint.length ? [{ range:`${moisSuivant}!O33:Q55`, values:fixesJoint }] : []),
-...(fixesElodie.length ? [{ range:`${moisSuivant}!X33:Z55`, values:fixesElodie }] : []),
-      ]})
-    });
-    if(!updateResp.ok) throw new Error('Erreur mise à jour mois suivant: '+updateResp.status);
+    // Revenus Élodie
+    const revenusElodie =
+      (keptJson.valueRanges?.[3]?.values || []).map((r, idx) => {
+        const row = r?.[0]
+          ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+          : ['', r?.[1] || '', r?.[2] || ''];
 
-    // 5. Nettoyer uniquement les zones de saisie mensuelles à ne pas conserver.
-    // Important : ne pas vider H13:K30 et O13:R30, car les revenus récurrents sont conservés.
-    // Important : ne pas vider O58:R60, car ce sont les lignes de suivi budget.
-    // Important : ne pas vider V4:V6, car ce sont les budgets mensuels paramétrables.
-    const clearResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchClear`,{
-      method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},
-      body:JSON.stringify({ranges:[
-        `${moisSuivant}!A14:D30`,  // Épargne revenus hors ancien solde
-        `${moisSuivant}!A33:D50`,  // Épargne dépenses
-        `${moisSuivant}!H58:K148`, // Perso charges variables
-        `${moisSuivant}!O61:R148`  // Joint charges variables réelles
-        `${moisSuivant}!X58:AA148 `  // Élodie charges variables réelles
-      ]})
-    });
-    if(!clearResp.ok) throw new Error('Erreur nettoyage mois suivant: '+clearResp.status);
+        if (idx === 0) row[2] = sElodie;
 
-    // 6. Nettoyer les caches locaux impactés.
+        return row;
+      });
+
+    // Charges fixes Yoann
+    const fixesPerso =
+      (keptJson.valueRanges?.[4]?.values || []).map(r =>
+        r?.[0]
+          ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+          : r
+      );
+
+    // Charges fixes Joint
+    const fixesJoint =
+      (keptJson.valueRanges?.[5]?.values || []).map(r =>
+        r?.[0]
+          ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+          : r
+      );
+
+    // Charges fixes Élodie
+    const fixesElodie =
+      (keptJson.valueRanges?.[6]?.values || []).map(r =>
+        r?.[0]
+          ? [addMonths(r[0], 1), r[1] || '', r[2] || '']
+          : r
+      );
+
+    // 5. Réécrire les reports, revenus et charges fixes
+    const updateResp = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: [
+            {
+              range: `${moisSuivant}!B1`,
+              values: [[moisSuivant]]
+            },
+            {
+              range: `${moisSuivant}!A13:C13`,
+              values: epargneReport
+            },
+
+            ...(revenusPerso.length
+              ? [{ range: `${moisSuivant}!H13:J30`, values: revenusPerso }]
+              : []),
+
+            ...(revenusJoint.length
+              ? [{ range: `${moisSuivant}!O13:Q30`, values: revenusJoint }]
+              : []),
+
+            ...(revenusElodie.length
+              ? [{ range: `${moisSuivant}!X13:Z30`, values: revenusElodie }]
+              : []),
+
+            ...(fixesPerso.length
+              ? [{ range: `${moisSuivant}!H33:J55`, values: fixesPerso }]
+              : []),
+
+            ...(fixesJoint.length
+              ? [{ range: `${moisSuivant}!O33:Q55`, values: fixesJoint }]
+              : []),
+
+            ...(fixesElodie.length
+              ? [{ range: `${moisSuivant}!X33:Z55`, values: fixesElodie }]
+              : [])
+          ]
+        })
+      }
+    );
+
+    if (!updateResp.ok) {
+      throw new Error('Erreur mise à jour mois suivant: ' + updateResp.status);
+    }
+
+    // 6. Nettoyer les zones mensuelles à ne pas conserver
+    const clearResp = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchClear`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ranges: [
+            `${moisSuivant}!A14:D30`,   // Épargne revenus hors ancien solde
+            `${moisSuivant}!A33:D50`,   // Épargne dépenses
+            `${moisSuivant}!H58:K148`,  // Variables Yoann
+            `${moisSuivant}!O61:R148`,  // Variables Joint réelles
+            `${moisSuivant}!X58:AA148`  // Variables Élodie
+          ]
+        })
+      }
+    );
+
+    if (!clearResp.ok) {
+      throw new Error('Erreur nettoyage mois suivant: ' + clearResp.status);
+    }
+
+    // 7. Nettoyer les caches locaux
     sheetData = {};
-    localStorage.removeItem('cache_rows_'+moisSuivant);
-    localStorage.removeItem('cache_soldes_'+moisSuivant);
 
-    closeSettings(); showToast('✅ Onglet '+moisSuivant+' créé !',3000);
-  } catch(e) {
-    showToast('❌ '+e.message,4000); btn.disabled=false;
-    document.getElementById('btn-prepare-label').textContent='Préparer '+getNextMonthName()+' 2026';
+    localStorage.removeItem('cache_rows_' + moisSuivant);
+    localStorage.removeItem('cache_soldes_' + moisSuivant);
+
+    closeSettings();
+
+    showToast('✅ Onglet ' + moisSuivant + ' créé !', 3000);
+
+  } catch (e) {
+
+    showToast('❌ ' + e.message, 4000);
+
+    btn.disabled = false;
+
+    document.getElementById('btn-prepare-label').textContent =
+      'Préparer ' + getNextMonthName() + ' 2026';
+
   }
+
 }
 
 
