@@ -3,6 +3,8 @@
 // ============================================================
 const CLIENT_ID = '917136650964-63auvuts9dg4hbtqr2o7pa1171pmmrr2.apps.googleusercontent.com';
 const SPREADSHEET_ID = '1OnFInZoJLwB1PYkzUFiEMnONpgzwXRl7ysf6n3Eue-Q';
+const REDIRECT_URI =
+  'https://tadapouet-coder.github.io/budget-app-couple/';
 const SCOPES =
 'openid email https://www.googleapis.com/auth/spreadsheets';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
@@ -149,12 +151,14 @@ function checkBudgetAlerts(budgetData) {
 function login() {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
-    redirect_uri: window.location.origin + window.location.pathname,
+    redirect_uri: REDIRECT_URI,
     response_type: 'token',
     scope: SCOPES,
     prompt: 'select_account'
   });
-  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+
+  window.location.href =
+    'https://accounts.google.com/o/oauth2/v2/auth?' + params;
 }
 
 function checkAuth() {
@@ -181,7 +185,7 @@ function refreshToken() {
   setTimeout(() => {
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
-      redirect_uri: window.location.origin + window.location.pathname,
+      redirect_uri: REDIRECT_URI,
       response_type: 'token',
       scope: SCOPES,
       prompt: 'select_account'
