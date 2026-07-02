@@ -946,55 +946,85 @@ async function saveBudgetsToSheet(mois,courses,carburant,autre) {
 }
 
 async function openSettings() {
+
   updateAppVersionDisplay();
+
   const s = getSettings();
+
   document.getElementById('settings-name1').value = s.name1;
   document.getElementById('settings-name2').value = s.name2;
-  document.getElementById('settings-email2').value = s.email2;
+
   document.getElementById('settings-user-mode').value =
-  localStorage.getItem('force_user_mode') || 'TOI';
+    localStorage.getItem('force_user_mode') || 'TOI';
 
+  // On ne pré-remplit pas les mots de passe pour éviter de les afficher
   document.getElementById('settings-pwd-toi').value = '';
-document.getElementById('settings-pwd-elodie').value = '';
-
- 
+  document.getElementById('settings-pwd-elodie').value = '';
 
   // Chips seuil
-  document.querySelectorAll('#chips-seuil .chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.val)===s.seuil));
+  document.querySelectorAll('#chips-seuil .chip').forEach(c =>
+    c.classList.toggle(
+      'selected',
+      parseInt(c.dataset.val) === s.seuil
+    )
+  );
+
   // Chips comparaison
-  document.querySelectorAll('#chips-comparaison .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===s.comparaison));
+  document.querySelectorAll('#chips-comparaison .chip').forEach(c =>
+    c.classList.toggle(
+      'selected',
+      c.dataset.val === s.comparaison
+    )
+  );
+
   // Budgets
   const mois = getViewMonthName();
   const b = await getBudgetsFromSheet(mois);
-  document.getElementById('budget-courses').value   = b.courses;
+
+  document.getElementById('budget-courses').value = b.courses;
   document.getElementById('budget-carburant').value = b.carburant;
-  document.getElementById('budget-autre').value     = b.autre;
+  document.getElementById('budget-autre').value = b.autre;
+
   // Mois suivant
   const nextName = getNextMonthName();
-  document.getElementById('btn-prepare-label').textContent = 'Préparer '+nextName+' 2026';
+
+  document.getElementById('btn-prepare-label').textContent =
+    'Préparer ' + nextName + ' 2026';
+
   const exists = await sheetExists(nextName);
-  const btn=document.getElementById('btn-prepare-month');
-  btn.disabled=exists; btn.style.opacity=exists?'0.4':'1';
-  document.getElementById('next-month-info').textContent = exists ? "L'onglet "+nextName+" existe déjà." : "Créer l'onglet "+nextName+" à partir de "+mois+".";
+
+  const btn = document.getElementById('btn-prepare-month');
+
+  btn.disabled = exists;
+  btn.style.opacity = exists ? '0.4' : '1';
+
+  document.getElementById('next-month-info').textContent =
+    exists
+      ? "L'onglet " + nextName + " existe déjà."
+      : "Créer l'onglet " + nextName + " à partir de " + mois + ".";
+
   document.getElementById('modal-settings').classList.add('open');
+
 }
 
 function closeSettings() { document.getElementById('modal-settings').classList.remove('open'); }
 
 async function saveSettingsHandler() {
 
-  const name1 = document.getElementById('settings-name1').value.trim() || 'Yoann';
-  const name2 = document.getElementById('settings-name2').value.trim() || 'Élodie';
-  const email2 = document.getElementById('settings-email2').value.trim();
+  const name1 =
+    document.getElementById('settings-name1').value.trim() || 'Yoann';
+
+  const name2 =
+    document.getElementById('settings-name2').value.trim() || 'Élodie';
 
   const userMode =
     document.getElementById('settings-user-mode').value;
 
-    const pwdToi =
-  document.getElementById('settings-pwd-toi').value.trim();
+  const pwdToi =
+    document.getElementById('settings-pwd-toi').value.trim();
 
-const pwdElodie =
-  document.getElementById('settings-pwd-elodie').value.trim();
+  const pwdElodie =
+    document.getElementById('settings-pwd-elodie').value.trim();
 
   const seuil =
     parseInt(getChipVal('chips-seuil')) || 80;
@@ -1019,36 +1049,47 @@ const pwdElodie =
     // 🔒 Changement de profil protégé par mot de passe
     if (userMode !== USER_MODE) {
 
-      const pwd = prompt(
-        `Mot de passe requis pour accéder au profil ${
-          userMode === 'TOI' ? 'Yoann' : 'Élodie'
-        }`
-      );
-
       const expectedPassword =
-  localStorage.getItem('pwd_' + userMode);
+        localStorage.getItem('pwd_' + userMode);
 
-if (expectedPassword && pwd !== expectedPassword) {
+      if (expectedPassword) {
 
-        showToast('❌ Mot de passe incorrect');
+        const pwd = prompt(
+          `Mot de passe requis pour accéder au profil ${
+            userMode === 'TOI' ? 'Yoann' : 'Élodie'
+          }`
+        );
 
-        btn.disabled = false;
-        return;
+        if (pwd !== expectedPassword) {
+
+          showToast('❌ Mot de passe incorrect');
+
+          btn.disabled = false;
+          return;
+        }
+
       }
 
       setUserMode(userMode);
     }
 
-    // Sauvegarde des paramètres
+    // Sauvegarde des paramètres généraux
     saveSettings({
       name1,
       name2,
-      email2,
+      email2: '',
       seuil,
       comparaison
     });
-localStorage.setItem('pwd_TOI', pwdToi);
-localStorage.setItem('pwd_ELODIE', pwdElodie);
+
+    // Sauvegarde des mots de passe seulement si un champ est renseigné
+    if (pwdToi) {
+      localStorage.setItem('pwd_TOI', pwdToi);
+    }
+
+    if (pwdElodie) {
+      localStorage.setItem('pwd_ELODIE', pwdElodie);
+    }
 
     // Sauvegarde budgets
     await saveBudgetsToSheet(
