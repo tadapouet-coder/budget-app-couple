@@ -128,8 +128,20 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 .tx-info { flex:1; min-width:0; }
 .tx-label { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .tx-meta { font-size:11px; color:var(--text2); margin-top:2px; }
-.tx-amount { font-size:14px; font-weight:600; color:var(--red); flex-shrink:0; }
-.tx-amount.income { color:var(--green-dark); }
+.tx-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red);
+  flex-shrink: 0;
+}
+
+.tx-amount.income {
+  color: var(--green-dark);
+}
+
+.tx-amount.expense {
+  color: var(--red);
+}
 
 /* ANNUEL */
 .annuel-tabs { display:flex; gap:8px; margin-bottom:14px; }

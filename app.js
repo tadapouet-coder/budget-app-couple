@@ -8,7 +8,7 @@ const REDIRECT_URI =
 const SCOPES =
 'openid email https://www.googleapis.com/auth/spreadsheets';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
-const APP_VERSION = '2026.06.09-v24.4';
+const APP_VERSION = '2026.06.09-v24.5';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
 let USER_MODE =
   localStorage.getItem('force_user_mode') || 'TOI';
@@ -520,57 +520,151 @@ async function loadTransactions(mois) {
 // ============================================================
 // TRANSACTIONS
 // ============================================================
-function parseRow(row, offset) {
-  return { date:row[offset]||null, lib:row[offset+1]||'', mnt:parseFloat(row[offset+2])||0, cat:row[offset+3]||'' };
+function parseRow(row, offset, rowIndex) {
+  return {
+    date: row[offset] || null,
+    lib: row[offset + 1] || '',
+    mnt: parseFloat(row[offset + 2]) || 0,
+    cat: row[offset + 3] || '',
+    rowIndex
+  };
+}
+
+function getTransactionNature(compte, rowIndex, libelle) {
+
+  const lib = (libelle || '').toLowerCase().trim();
+
+  // Ne jamais afficher les anciens soldes
+  if (lib.includes('ancien solde')) {
+    return 'skip';
+  }
+
+  // Range A13:AA160 => index 0 = ligne 13 Google Sheets
+
+  if (compte === 'Épargne') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'income';   // A13:D30
+    if (rowIndex >= 20 && rowIndex <= 37) return 'expense'; // A33:D50
+  }
+
+  if (compte === 'Compte Perso') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'income';   // H13:K30
+    if (rowIndex >= 20 && rowIndex <= 42) return 'expense'; // H33:K55
+    if (rowIndex >= 45 && rowIndex <= 135) return 'expense'; // H58:K148
+  }
+
+  if (compte === 'Compte Joint') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'income';   // O13:R30
+    if (rowIndex >= 20 && rowIndex <= 42) return 'expense'; // O33:R55
+    if (rowIndex >= 48 && rowIndex <= 135) return 'expense'; // O61:R148
+  }
+
+  if (compte === 'Compte Perso Elodie') {
+    if (rowIndex >= 0 && rowIndex <= 17) return 'income';   // X13:AA30
+    if (rowIndex >= 20 && rowIndex <= 42) return 'expense'; // X33:AA55
+    if (rowIndex >= 45 && rowIndex <= 135) return 'expense'; // X58:AA148
+  }
+
+  return 'expense';
 }
 
 function renderTransactions(rows) {
-  
-// 🔐 blocage données pour Elodie
-if (USER_MODE === 'ELODIE' && currentCompteFilter === 'Compte Perso') {
-  document.getElementById('tx-list').innerHTML = '<div class="budget-loading">Non autorisé</div>';
-  return;
-}
 
-if (USER_MODE === 'ELODIE' && currentCompteFilter === 'Épargne') {
-  document.getElementById('tx-list').innerHTML = '<div class="budget-loading">Non autorisé</div>';
-  return;
-}
+  // 🔐 blocage données pour Elodie
+  if (USER_MODE === 'ELODIE' && currentCompteFilter === 'Compte Perso') {
+    document.getElementById('tx-list').innerHTML =
+      '<div class="budget-loading">Non autorisé</div>';
+    return;
+  }
 
-const offsets = {
-  'Compte Joint':14,
-  'Compte Perso':7,
-  'Épargne':0,
-  'Compte Perso Elodie':23
-};
+  if (USER_MODE === 'ELODIE' && currentCompteFilter === 'Épargne') {
+    document.getElementById('tx-list').innerHTML =
+      '<div class="budget-loading">Non autorisé</div>';
+    return;
+  }
 
-const offset = offsets[currentCompteFilter] ?? offsets['Compte Joint'];
+  const offsets = {
+    'Compte Joint': 14,
+    'Compte Perso': 7,
+    'Épargne': 0,
+    'Compte Perso Elodie': 23
+  };
+
+  const offset =
+    offsets[currentCompteFilter] ?? offsets['Compte Joint'];
 
   const container = document.getElementById('tx-list');
-  const today = new Date(); today.setHours(23,59,59,0);
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 0);
+
   const items = [];
-  rows.forEach(row => {
-    const r = parseRow(row, offset);
+
+  rows.forEach((row, i) => {
+
+    const r = parseRow(row, offset, i);
+
     if (!r.lib || !r.mnt) return;
+
+    const nature = getTransactionNature(
+      currentCompteFilter,
+      i,
+      r.lib
+    );
+
+    if (nature === 'skip') return;
+
     const d = parseDate(r.date);
+
     if (!d || d > today) return;
-    items.push(r);
+
+    items.push({
+      ...r,
+      nature
+    });
+
   });
-  if (!items.length) { container.innerHTML='<div class="budget-loading">Aucune opération</div>'; return; }
-  items.sort((a,b) => {
-    const da=parseDate(a.date), db=parseDate(b.date);
-    if(!da) return 1; if(!db) return -1; return db-da;
+
+  if (!items.length) {
+    container.innerHTML =
+      '<div class="budget-loading">Aucune opération</div>';
+    return;
+  }
+
+  items.sort((a, b) => {
+    const da = parseDate(a.date);
+    const db = parseDate(b.date);
+
+    if (!da) return 1;
+    if (!db) return -1;
+
+    return db - da;
   });
+
   container.innerHTML = items.map(r => {
-    const isIncome = r.mnt>0;
-    return `<div class="tx-item">
-      <div class="tx-icon ${getIconClass(r.cat,isIncome)}"><i class="ti ${getIcon(r.cat,isIncome)}"></i></div>
-      <div class="tx-info">
-        <div class="tx-label">${escHtml(r.lib)}</div>
-        <div class="tx-meta">${r.date?fmtDate(r.date):''}${r.cat?' · '+r.cat:''}</div>
+
+    const isIncome = r.nature === 'income';
+    const sign = isIncome ? '+' : '−';
+    const amountClass = isIncome ? 'income' : 'expense';
+
+    return `
+      <div class="tx-item">
+        <div class="tx-icon ${getIconClass(r.cat, isIncome)}">
+          <i class="ti ${getIcon(r.cat, isIncome)}"></i>
+        </div>
+
+        <div class="tx-info">
+          <div class="tx-label">${escHtml(r.lib)}</div>
+          <div class="tx-meta">
+            ${r.date ? fmtDate(r.date) : ''}${r.cat ? ' · ' + escHtml(r.cat) : ''}
+          </div>
+        </div>
+
+        <div class="tx-amount ${amountClass}">
+          ${sign}${fmt(Math.abs(r.mnt))}
+        </div>
       </div>
-      <div class="tx-amount ${isIncome?'income':''}">${isIncome?'+':'−'}${fmt(Math.abs(r.mnt))}</div>
-    </div>`;
+    `;
+
   }).join('');
 }
 
