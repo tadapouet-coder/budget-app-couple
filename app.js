@@ -1434,14 +1434,15 @@ async function prepareNextMonth() {
 
     // 4. Lire les lignes à conserver depuis l'onglet déjà dupliqué
     const keptRanges = [
-      `${moisSuivant}!A13:C13`,   // Épargne ancien solde
-      `${moisSuivant}!H13:J30`,   // Revenus Perso Yoann
-      `${moisSuivant}!O13:Q30`,   // Revenus Joint
-      `${moisSuivant}!X13:Z30`,   // Revenus Perso Élodie
-      `${moisSuivant}!H33:J55`,   // Charges fixes Yoann
-      `${moisSuivant}!O33:Q55`,   // Charges fixes Joint
-      `${moisSuivant}!X33:Z55`    // Charges fixes Élodie
-    ];
+  `${moisSuivant}!A13:C13`,   // Épargne ancien solde
+  `${moisSuivant}!H13:J30`,   // Revenus Perso Yoann
+  `${moisSuivant}!O13:Q30`,   // Revenus Joint
+  `${moisSuivant}!X13:Z30`,   // Revenus Perso Élodie
+  `${moisSuivant}!H33:J55`,   // Charges fixes Yoann
+  `${moisSuivant}!O33:Q55`,   // Charges fixes Joint
+  `${moisSuivant}!X33:Z55`,   // Charges fixes Élodie
+  `${moisSuivant}!O58:O60`    // Dates budget prévisionnel Joint
+];
 
     const keptResp = await fetch(
       buildBatchGetUrl(keptRanges, 'FORMATTED_VALUE'),
@@ -1530,6 +1531,13 @@ async function prepareNextMonth() {
           : r
       );
 
+// Dates des lignes budget prévisionnel Joint : O58:O60
+// On ne modifie que les dates pour ne pas écraser les formules en Q58:Q60
+const budgetJointDates =
+  (keptJson.valueRanges?.[7]?.values || []).map(r => [
+    r?.[0] ? addMonths(r[0], 1) : ''
+  ]);
+
     // 5. Réécrire les reports, revenus et charges fixes
     const updateResp = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
@@ -1573,7 +1581,12 @@ async function prepareNextMonth() {
 
             ...(fixesElodie.length
               ? [{ range: `${moisSuivant}!X33:Z55`, values: fixesElodie }]
+              : []),
+              
+            ...(budgetJointDates.length
+              ? [{ range: `${moisSuivant}!O58:O60`, values: budgetJointDates }]
               : [])
+
           ]
         })
       }
