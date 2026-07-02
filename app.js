@@ -2123,24 +2123,45 @@ document.getElementById('btn-month-next').addEventListener('click',()=>changeMon
 
 // Swipe gauche/droite pour changer de mois
 (function() {
-  let startX = 0, startY = 0;
+  let startX = 0;
+  let startY = 0;
+
   const app = document.getElementById('app');
+
   app.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
   }, { passive: true });
+
   app.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    // Ignorer si c'est un scroll vertical ou un mouvement trop court
-    if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 60) return;
-    // Ignorer si on swipe sur un modal ouvert
+
+    // Ignorer si un modal est ouvert
     if (document.getElementById('modal').classList.contains('open')) return;
     if (document.getElementById('modal-settings').classList.contains('open')) return;
-    if (dx < 0) changeMonth(+1); // swipe gauche → mois suivant
-    else changeMonth(-1);        // swipe droit → mois précédent
+
+    // ✅ Important :
+    // Dans l'onglet Dépenses, on réserve le swipe aux opérations
+    const activeScreen = document.querySelector('.screen.active');
+
+    if (activeScreen && activeScreen.id === 'screen-transactions') {
+      return;
+    }
+
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+
+    // Ignorer si c'est un scroll vertical ou un mouvement trop court
+    if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 60) return;
+
+    if (dx < 0) {
+      changeMonth(+1); // swipe gauche → mois suivant
+    } else {
+      changeMonth(-1); // swipe droit → mois précédent
+    }
+
   }, { passive: true });
 })();
+
 document.getElementById('modal-settings').addEventListener('click',e=>{if(e.target===document.getElementById('modal-settings'))closeSettings();});
 document.getElementById('btn-submit').addEventListener('click',submitDepense);
 initTransactionSwipeEvents();
