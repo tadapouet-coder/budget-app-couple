@@ -179,7 +179,18 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 .chip { padding:7px 13px; border:1px solid var(--border); border-radius:20px; font-size:13px; cursor:pointer; background:var(--card); color:var(--text2); font-family:var(--font); }
 .chip.selected { background:var(--green-light); color:var(--green-dark); border-color:var(--green); font-weight:600; }
 .chip:active { opacity:.7; }
-input, select { width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg); color:var(--text); font-size:15px; font-family:var(--font); -webkit-appearance:none; }
+input, select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  font-family: var(--font);
+  -webkit-appearance: none;
+  appearance: none;
+}
 input:focus, select:focus { outline:none; border-color:var(--green); }
 .submit-btn { width:100%; background:var(--green); color:white; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; margin-top:6px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--font); }
 .submit-btn:active { opacity:.8; }

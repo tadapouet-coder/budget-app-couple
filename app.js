@@ -8,7 +8,7 @@ const REDIRECT_URI =
 const SCOPES =
 'openid email https://www.googleapis.com/auth/spreadsheets';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
-const APP_VERSION = '2026.06.09-v24.5';
+const APP_VERSION = '2026.06.09-v24.6';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
 let USER_MODE =
   localStorage.getItem('force_user_mode') || 'TOI';
@@ -1624,9 +1624,7 @@ await sheetsUpdate(
   )
 );
 
-    if (!clearResp.ok) {
-      throw new Error('Erreur nettoyage mois suivant: ' + clearResp.status);
-    }
+  
 
     // 7. Nettoyer les caches locaux
     sheetData = {};
