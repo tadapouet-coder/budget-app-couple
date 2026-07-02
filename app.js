@@ -568,6 +568,12 @@ function getTransactionNature(compte, rowIndex, libelle) {
 }
 
 function renderTransactions(rows) {
+  
+  console.log(
+    '✅ renderTransactions nouvelle version active',
+    currentCompteFilter,
+    rows.length
+  );
 
   // 🔐 blocage données pour Elodie
   if (USER_MODE === 'ELODIE' && currentCompteFilter === 'Compte Perso') {
