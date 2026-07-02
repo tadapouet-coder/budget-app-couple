@@ -1043,6 +1043,45 @@ async function saveSettingsHandler() {
 
   try {
 
+    const oldPwdToi =
+      localStorage.getItem('pwd_TOI') || '';
+
+    const oldPwdElodie =
+      localStorage.getItem('pwd_ELODIE') || '';
+
+    // 🔒 Modification du mot de passe Yoann protégée
+    if (pwdToi && oldPwdToi && pwdToi !== oldPwdToi) {
+
+      const oldPwdInput = prompt(
+        'Ancien mot de passe Yoann requis pour modifier ce mot de passe'
+      );
+
+      if (oldPwdInput !== oldPwdToi) {
+
+        showToast('❌ Ancien mot de passe Yoann incorrect');
+
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    // 🔒 Modification du mot de passe Élodie protégée
+    if (pwdElodie && oldPwdElodie && pwdElodie !== oldPwdElodie) {
+
+      const oldPwdInput = prompt(
+        'Ancien mot de passe Élodie requis pour modifier ce mot de passe'
+      );
+
+      if (oldPwdInput !== oldPwdElodie) {
+
+        showToast('❌ Ancien mot de passe Élodie incorrect');
+
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    // 🔒 Changement de profil protégé par le mot de passe du profil cible
     if (userMode !== USER_MODE) {
 
       const expectedPassword =
@@ -1057,16 +1096,18 @@ async function saveSettingsHandler() {
         );
 
         if (pwd !== expectedPassword) {
+
           showToast('❌ Mot de passe incorrect');
+
           btn.disabled = false;
           return;
         }
-
       }
 
       setUserMode(userMode);
     }
 
+    // Sauvegarde des paramètres généraux
     saveSettings({
       name1,
       name2,
@@ -1075,14 +1116,17 @@ async function saveSettingsHandler() {
       comparaison
     });
 
+    // Sauvegarde du nouveau mot de passe Yoann seulement si renseigné
     if (pwdToi) {
       localStorage.setItem('pwd_TOI', pwdToi);
     }
 
+    // Sauvegarde du nouveau mot de passe Élodie seulement si renseigné
     if (pwdElodie) {
       localStorage.setItem('pwd_ELODIE', pwdElodie);
     }
 
+    // Sauvegarde budgets
     await saveBudgetsToSheet(
       getViewMonthName(),
       courses,
