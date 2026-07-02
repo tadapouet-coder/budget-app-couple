@@ -63,6 +63,7 @@ let currentChartCompte = 'Compte Joint';
 let sheetData = {};
 let viewMonth = new Date().getMonth();
 let chartInstance = null;
+let txActionMap = {};
 
 // SETTINGS (localStorage)
 function getSettings() {
@@ -574,6 +575,66 @@ if (compte === 'Compte Joint') {
   return 'expense';
 }
 
+function getColsForCompte(compte) {
+  if (compte === 'Épargne') {
+    return { start: 'A', end: 'D' };
+  }
+
+  if (compte === 'Compte Perso') {
+    return { start: 'H', end: 'K' };
+  }
+
+  if (compte === 'Compte Joint') {
+    return { start: 'O', end: 'R' };
+  }
+
+  if (compte === 'Compte Perso Elodie') {
+    return { start: 'X', end: 'AA' };
+  }
+
+  return null;
+}
+
+async function deleteTransactionByKey(key) {
+  const tx = txActionMap[key];
+
+  if (!tx) {
+    showToast('❌ Opération introuvable');
+    return;
+  }
+
+  const ok = confirm(
+    `Supprimer cette opération ?\n\n${tx.lib}\n${fmt(Math.abs(tx.mnt))}`
+  );
+
+  if (!ok) return;
+
+  const cols = getColsForCompte(tx.compte);
+
+  if (!cols) {
+    showToast('❌ Compte introuvable');
+    return;
+  }
+
+  try {
+    const mois = getViewMonthName();
+
+    await sheetsUpdate(
+      `${mois}!${cols.start}${tx.sheetRow}:${cols.end}${tx.sheetRow}`,
+      [['', '', '', '']]
+    );
+
+    showToast('✅ Opération supprimée');
+
+    sheetData = {};
+
+    await loadMonth(mois);
+
+  } catch (e) {
+    showToast('❌ Suppression impossible : ' + e.message);
+  }
+}
+
 function renderTransactions(rows) {
 
   // 🔐 blocage données pour Elodie
@@ -605,6 +666,8 @@ function renderTransactions(rows) {
   today.setHours(23, 59, 59, 0);
 
   const items = [];
+
+  txActionMap = {};
 
   rows.forEach((row, i) => {
 
@@ -638,7 +701,9 @@ function renderTransactions(rows) {
 
     items.push({
       ...r,
-      nature
+      nature,
+      sheetRow,
+      compte: currentCompteFilter
     });
 
   });
@@ -665,22 +730,38 @@ function renderTransactions(rows) {
     const sign = isIncome ? '+' : '−';
     const amountClass = isIncome ? 'income' : 'expense';
 
+    const key =
+      `${r.compte}|${r.sheetRow}`;
+
+    txActionMap[key] = r;
+
     return `
-      <div class="tx-item">
-        <div class="tx-icon ${getIconClass(r.cat, isIncome)}">
-          <i class="ti ${getIcon(r.cat, isIncome)}"></i>
+      <div class="tx-swipe" data-key="${escHtml(key)}">
+
+        <div class="tx-actions">
+          <button class="tx-action-btn tx-delete" data-key="${escHtml(key)}">
+            <i class="ti ti-trash"></i>
+            Supprimer
+          </button>
         </div>
 
-        <div class="tx-info">
-          <div class="tx-label">${escHtml(r.lib)}</div>
-          <div class="tx-meta">
-            ${r.date ? fmtDate(r.date) : ''}${r.cat ? ' · ' + escHtml(r.cat) : ''}
+        <div class="tx-item">
+          <div class="tx-icon ${getIconClass(r.cat, isIncome)}">
+            <i class="ti ${getIcon(r.cat, isIncome)}"></i>
+          </div>
+
+          <div class="tx-info">
+            <div class="tx-label">${escHtml(r.lib)}</div>
+            <div class="tx-meta">
+              ${r.date ? fmtDate(r.date) : ''}${r.cat ? ' · ' + escHtml(r.cat) : ''}
+            </div>
+          </div>
+
+          <div class="tx-amount ${amountClass}">
+            ${sign}${fmt(Math.abs(r.mnt))}
           </div>
         </div>
 
-        <div class="tx-amount ${amountClass}">
-          ${sign}${fmt(Math.abs(r.mnt))}
-        </div>
       </div>
     `;
 
@@ -1964,6 +2045,53 @@ function setUserMode(mode) {
 
 }
 
+function initTransactionSwipeEvents() {
+  const container = document.getElementById('tx-list');
+
+  if (!container) return;
+
+  let startX = 0;
+  let currentSwipe = null;
+
+  container.addEventListener('touchstart', e => {
+    const swipe = e.target.closest('.tx-swipe');
+
+    if (!swipe) return;
+
+    startX = e.touches[0].clientX;
+    currentSwipe = swipe;
+  }, { passive: true });
+
+  container.addEventListener('touchend', e => {
+    if (!currentSwipe) return;
+
+    const endX = e.changedTouches[0].clientX;
+    const dx = endX - startX;
+
+    document.querySelectorAll('.tx-swipe.open').forEach(el => {
+      if (el !== currentSwipe) el.classList.remove('open');
+    });
+
+    if (dx < -50) {
+      currentSwipe.classList.add('open');
+    } else if (dx > 30) {
+      currentSwipe.classList.remove('open');
+    }
+
+    currentSwipe = null;
+  }, { passive: true });
+
+  container.addEventListener('click', e => {
+    const delBtn = e.target.closest('.tx-delete');
+
+    if (!delBtn) return;
+
+    const key = delBtn.dataset.key;
+
+    deleteTransactionByKey(key);
+  });
+}
+
 // ============================================================
 // EVENTS
 // ============================================================
@@ -2015,6 +2143,7 @@ document.getElementById('btn-month-next').addEventListener('click',()=>changeMon
 })();
 document.getElementById('modal-settings').addEventListener('click',e=>{if(e.target===document.getElementById('modal-settings'))closeSettings();});
 document.getElementById('btn-submit').addEventListener('click',submitDepense);
+initTransactionSwipeEvents();
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
 
 ['fab-dashboard','fab-tx','fab-stats','fab-annuel'].forEach(id=>{

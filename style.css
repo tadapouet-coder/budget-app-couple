@@ -142,6 +142,59 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 .tx-amount.expense {
   color: var(--red);
 }
+.tx-swipe {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border-bottom: .5px solid var(--border);
+}
+
+.tx-swipe:last-child {
+  border-bottom: none;
+}
+
+.tx-swipe .tx-item {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  transition: transform .22s ease;
+  border-bottom: none;
+}
+
+.tx-swipe.open .tx-item {
+  transform: translateX(-96px);
+}
+
+.tx-actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 96px;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: var(--red);
+  z-index: 1;
+}
+
+.tx-action-btn {
+  width: 96px;
+  border: none;
+  background: var(--red);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.tx-action-btn i {
+  font-size: 18px;
+}
 
 /* ANNUEL */
 .annuel-tabs { display:flex; gap:8px; margin-bottom:14px; }
