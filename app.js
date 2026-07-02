@@ -552,11 +552,18 @@ function getTransactionNature(compte, rowIndex, libelle) {
     if (rowIndex >= 45 && rowIndex <= 135) return 'expense'; // H58:K148
   }
 
-  if (compte === 'Compte Joint') {
-    if (rowIndex >= 0 && rowIndex <= 17) return 'income';   // O13:R30
-    if (rowIndex >= 20 && rowIndex <= 42) return 'expense'; // O33:R55
-    if (rowIndex >= 48 && rowIndex <= 135) return 'expense'; // O61:R148
-  }
+  
+if (compte === 'Compte Joint') {
+  if (rowIndex >= 0 && rowIndex <= 17) return 'income';    // O13:R30 revenus
+  if (rowIndex >= 20 && rowIndex <= 42) return 'expense';  // O33:R55 charges fixes
+
+  // O58:R60 = lignes budget prévisionnel Courses / Essence / Autre
+  // Ces lignes ne sont pas de vraies opérations, donc on les masque.
+  if (rowIndex >= 45 && rowIndex <= 47) return 'skip';
+
+  if (rowIndex >= 48 && rowIndex <= 135) return 'expense'; // O61:R148 vraies charges variables
+}
+
 
   if (compte === 'Compte Perso Elodie') {
     if (rowIndex >= 0 && rowIndex <= 17) return 'income';   // X13:AA30
