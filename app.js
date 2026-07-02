@@ -1466,24 +1466,37 @@ async function prepareNextMonth() {
 
     // 6. Nettoyer les zones mensuelles à ne pas conserver
     const clearResp = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchClear`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ranges: [
-            `${moisSuivant}!A14:D30`,   // Épargne revenus hors ancien solde
-            `${moisSuivant}!A33:D50`,   // Épargne dépenses
-            `${moisSuivant}!H58:K148`,  // Variables Yoann
-            `${moisSuivant}!O61:R148`,  // Variables Joint réelles
-            `${moisSuivant}!X58:AA148`  // Variables Élodie
-          ]
-        })
-      }
-    );
+  `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchClear`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + accessToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      ranges: [
+        `${moisSuivant}!A14:D30`,    // Épargne revenus hors ancien solde
+        `${moisSuivant}!A33:D50`,    // Épargne dépenses
+        `${moisSuivant}!H58:K148`,   // Variables Yoann
+        `${moisSuivant}!O61:R148`,   // Variables Joint réelles
+        `${moisSuivant}!X58:AA148`   // Variables Élodie
+      ]
+    })
+  }
+);
+
+if (!clearResp.ok) {
+  throw new Error('Erreur nettoyage mois suivant: ' + clearResp.status);
+}
+
+// ✅ Sécurité supplémentaire : forcer l'effacement des charges variables Élodie
+await sheetsUpdate(
+  `${moisSuivant}!X58:AA148`,
+  Array.from(
+    { length: 91 },
+    () => ['', '', '', '']
+  )
+);
 
     if (!clearResp.ok) {
       throw new Error('Erreur nettoyage mois suivant: ' + clearResp.status);
