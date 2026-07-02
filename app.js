@@ -614,6 +614,17 @@ function renderTransactions(rows) {
 
   rows.forEach((row, i) => {
 
+    // ✅ Masquer les 3 lignes de budget prévisionnel du Compte Joint
+    // O58:R60 = Courses / Essence / Autre prévisionnels
+    // A13:AA160 => ligne 58 = index 45
+    if (
+      currentCompteFilter === 'Compte Joint' &&
+      i >= 45 &&
+      i <= 47
+    ) {
+      return;
+    }
+
     const r = parseRow(row, offset, i);
 
     if (!r.lib || !r.mnt) return;
