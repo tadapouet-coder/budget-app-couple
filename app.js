@@ -575,12 +575,6 @@ if (compte === 'Compte Joint') {
 }
 
 function renderTransactions(rows) {
-  
-  console.log(
-    '✅ renderTransactions nouvelle version active',
-    currentCompteFilter,
-    rows.length
-  );
 
   // 🔐 blocage données pour Elodie
   if (USER_MODE === 'ELODIE' && currentCompteFilter === 'Compte Perso') {
@@ -620,7 +614,7 @@ function renderTransactions(rows) {
 
     if (!r.lib || !r.mnt) return;
 
-    // ✅ Masquer les lignes budget prévisionnel du Compte Joint
+    // ✅ Masquer les 3 lignes budget prévisionnel du Compte Joint
     // Google Sheets : O58:R60
     if (
       currentCompteFilter === 'Compte Joint' &&
@@ -630,24 +624,24 @@ function renderTransactions(rows) {
       return;
     }
 
-    if (
-      currentCompteFilter === 'Compte Joint' &&
-      ['Courses', 'Essence', 'Autre'].includes(String(r.lib).trim())
-    ) {
-      console.log('DEBUG BUDGET JOINT', {
-        libelle: r.lib,
-        rowIndex: i,
-        sheetRow,
-        montant: r.mnt,
-        categorie: r.cat
-      });
-    }
-
     const nature = getTransactionNature(
       currentCompteFilter,
       i,
       r.lib
     );
+
+    if (nature === 'skip') return;
+
+    const d = parseDate(r.date);
+
+    if (!d || d > today) return;
+
+    items.push({
+      ...r,
+      nature
+    });
+
+  });
 
   if (!items.length) {
     container.innerHTML =
