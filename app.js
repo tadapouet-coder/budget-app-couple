@@ -614,39 +614,40 @@ function renderTransactions(rows) {
 
   rows.forEach((row, i) => {
 
-    // ✅ Masquer les 3 lignes de budget prévisionnel du Compte Joint
-    // O58:R60 = Courses / Essence / Autre prévisionnels
-    // A13:AA160 => ligne 58 = index 45
-    if (
-      currentCompteFilter === 'Compte Joint' &&
-      i >= 45 &&
-      i <= 47
-    ) {
-      return;
-    }
+    const sheetRow = i + 13;
 
     const r = parseRow(row, offset, i);
 
     if (!r.lib || !r.mnt) return;
+
+    // ✅ Masquer les lignes budget prévisionnel du Compte Joint
+    // Google Sheets : O58:R60
+    if (
+      currentCompteFilter === 'Compte Joint' &&
+      sheetRow >= 58 &&
+      sheetRow <= 60
+    ) {
+      return;
+    }
+
+    if (
+      currentCompteFilter === 'Compte Joint' &&
+      ['Courses', 'Essence', 'Autre'].includes(String(r.lib).trim())
+    ) {
+      console.log('DEBUG BUDGET JOINT', {
+        libelle: r.lib,
+        rowIndex: i,
+        sheetRow,
+        montant: r.mnt,
+        categorie: r.cat
+      });
+    }
 
     const nature = getTransactionNature(
       currentCompteFilter,
       i,
       r.lib
     );
-
-    if (nature === 'skip') return;
-
-    const d = parseDate(r.date);
-
-    if (!d || d > today) return;
-
-    items.push({
-      ...r,
-      nature
-    });
-
-  });
 
   if (!items.length) {
     container.innerHTML =
