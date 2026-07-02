@@ -957,35 +957,32 @@ async function openSettings() {
   document.getElementById('settings-user-mode').value =
     localStorage.getItem('force_user_mode') || 'TOI';
 
-  // On ne pré-remplit pas les mots de passe pour éviter de les afficher
+  // Ne pas afficher les mots de passe existants
   document.getElementById('settings-pwd-toi').value = '';
   document.getElementById('settings-pwd-elodie').value = '';
 
-  // Chips seuil
-  document.querySelectorAll('#chips-seuil .chip').forEach(c =>
+  document.querySelectorAll('#chips-seuil .chip').forEach(c => {
     c.classList.toggle(
       'selected',
       parseInt(c.dataset.val) === s.seuil
-    )
-  );
+    );
+  });
 
-  // Chips comparaison
-  document.querySelectorAll('#chips-comparaison .chip').forEach(c =>
+  document.querySelectorAll('#chips-comparaison .chip').forEach(c => {
     c.classList.toggle(
       'selected',
       c.dataset.val === s.comparaison
-    )
-  );
+    );
+  });
 
-  // Budgets
   const mois = getViewMonthName();
+
   const b = await getBudgetsFromSheet(mois);
 
   document.getElementById('budget-courses').value = b.courses;
   document.getElementById('budget-carburant').value = b.carburant;
   document.getElementById('budget-autre').value = b.autre;
 
-  // Mois suivant
   const nextName = getNextMonthName();
 
   document.getElementById('btn-prepare-label').textContent =
@@ -1046,7 +1043,6 @@ async function saveSettingsHandler() {
 
   try {
 
-    // 🔒 Changement de profil protégé par mot de passe
     if (userMode !== USER_MODE) {
 
       const expectedPassword =
@@ -1061,9 +1057,7 @@ async function saveSettingsHandler() {
         );
 
         if (pwd !== expectedPassword) {
-
           showToast('❌ Mot de passe incorrect');
-
           btn.disabled = false;
           return;
         }
@@ -1073,7 +1067,6 @@ async function saveSettingsHandler() {
       setUserMode(userMode);
     }
 
-    // Sauvegarde des paramètres généraux
     saveSettings({
       name1,
       name2,
@@ -1082,7 +1075,6 @@ async function saveSettingsHandler() {
       comparaison
     });
 
-    // Sauvegarde des mots de passe seulement si un champ est renseigné
     if (pwdToi) {
       localStorage.setItem('pwd_TOI', pwdToi);
     }
@@ -1091,7 +1083,6 @@ async function saveSettingsHandler() {
       localStorage.setItem('pwd_ELODIE', pwdElodie);
     }
 
-    // Sauvegarde budgets
     await saveBudgetsToSheet(
       getViewMonthName(),
       courses,
