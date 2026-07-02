@@ -85,8 +85,11 @@ function saveSettings(s) {
 // ============================================================
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/budget-pwa/sw.js')
-      .then(reg => { console.log('SW registered'); checkNotifPermission(reg); })
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('SW registered');
+        checkNotifPermission(reg);
+      })
       .catch(e => console.log('SW error', e));
   }
 }
