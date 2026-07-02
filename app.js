@@ -1604,6 +1604,22 @@ document.getElementById('btn-settings').addEventListener('click',openSettings);
 document.getElementById('btn-save-settings').addEventListener('click',saveSettingsHandler);
 document.getElementById('btn-prepare-month').addEventListener('click',prepareNextMonth);
 document.getElementById('btn-clear-cache-reconnect').addEventListener('click', clearCacheAndReconnect);
+document.getElementById('btn-reset-profile-passwords').addEventListener('click', () => {
+  const ok = confirm(
+    "Cette action va supprimer les mots de passe des profils Yoann et Élodie sur cet appareil uniquement.\n\nContinuer ?"
+  );
+
+  if (!ok) return;
+
+  localStorage.removeItem('pwd_TOI');
+  localStorage.removeItem('pwd_ELODIE');
+
+  showToast('✅ Mots de passe profils réinitialisés');
+
+  setTimeout(() => {
+    location.reload();
+  }, 800);
+});
 document.getElementById('btn-month-prev').addEventListener('click',()=>changeMonth(-1));
 document.getElementById('btn-month-next').addEventListener('click',()=>changeMonth(+1));
 
