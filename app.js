@@ -1883,16 +1883,11 @@ async function findFirstEmptyTableRow(mois, compte, type) {
 
 async function submitDepense() {
 
-  const selectedCompte = getChipVal('chips-compte');
-  const selectedType = getChipVal('chips-type');
+const selectedCompte = getChipVal('chips-compte');
+const selectedType = getChipVal('chips-type');
 
-  const compte = editingTransaction
-    ? editingTransaction.compte
-    : selectedCompte;
-
-  const type = editingTransaction
-    ? editingTransaction.type
-    : selectedType;
+const compte = selectedCompte;
+const type = selectedType;
 
   const montant = parseFloat(document.getElementById('input-montant').value);
   const libelle = document.getElementById('input-libelle').value.trim();
