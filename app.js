@@ -8,7 +8,7 @@ const REDIRECT_URI =
 const SCOPES =
 'openid email https://www.googleapis.com/auth/spreadsheets';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
-const APP_VERSION = '2026.06.09-v24.6';
+const APP_VERSION = '2026.09.24-v25.1';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
 let USER_MODE =
   localStorage.getItem('force_user_mode') || 'TOI';
@@ -164,7 +164,11 @@ function login() {
 }
 
 function checkAuth() {
-  const hash = new URLSearchParams(window.location.hash.substring(1));
+  // iOS peut rouvrir une PWA OAuth avec le fragment placé dans
+  // location.hash ou, selon le contexte standalone, dans location.href.
+  // On récupère donc le fragment depuis l'URL complète en secours.
+  const rawHash = window.location.hash || (window.location.href.includes('#') ? '#' + window.location.href.split('#').slice(1).join('#') : '');
+  const hash = new URLSearchParams(rawHash.replace(/^#/, ''));
   const token = hash.get('access_token');
   if (token) {
     accessToken = token;
