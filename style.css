@@ -402,3 +402,45 @@ input:focus, select:focus { outline:none; border-color:var(--green); }
 @supports not (background: color-mix(in srgb, white 50%, transparent)) {
   .nav.bottom-nav { background: var(--card); }
 }
+
+
+/* Verrouillage du viewport iOS : scroll vertical uniquement */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+body {
+  position: relative;
+  touch-action: pan-y;
+}
+
+.app {
+  width: 100%;
+  max-width: 430px;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.screen,
+.header {
+  max-width: 100%;
+}
+
+/* La barre reste ancrée au viewport, même pendant le rubber-band iOS */
+.nav.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  transform: none;
+  width: 100%;
+  max-width: 430px;
+  bottom: 0;
+  padding-bottom: max(env(safe-area-inset-bottom), 6px);
+  height: calc(66px + max(env(safe-area-inset-bottom), 6px));
+}
