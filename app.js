@@ -2261,7 +2261,6 @@ function initTransactionSwipeEvents() {
 // ============================================================
 document.getElementById('btn-login').addEventListener('click',login);
 document.getElementById('btn-logout').addEventListener('click',logout);
-document.getElementById('btn-refresh').addEventListener('click',()=>{sheetData={};loadMonth(getViewMonthName());});
 document.getElementById('btn-settings').addEventListener('click',openSettings);
 document.getElementById('btn-save-settings').addEventListener('click',saveSettingsHandler);
 document.getElementById('btn-prepare-month').addEventListener('click',prepareNextMonth);
@@ -2331,9 +2330,7 @@ document.getElementById('btn-submit').addEventListener('click',submitDepense);
 initTransactionSwipeEvents();
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
 
-['fab-dashboard','fab-tx','fab-stats','fab-annuel'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',openModal);
-});
+document.getElementById('bottom-add').addEventListener('click', openModal);
 
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
