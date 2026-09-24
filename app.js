@@ -8,7 +8,7 @@ const REDIRECT_URI =
 const SCOPES =
 'openid email https://www.googleapis.com/auth/spreadsheets';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Décembre'];
-const APP_VERSION = '2026.09.24-v25.1';
+const APP_VERSION = '2026.09.24-v25.2';
 const DATA_SCHEMA_VERSION = 'budget-sheet-v1';
 let USER_MODE =
   localStorage.getItem('force_user_mode') || 'TOI';
@@ -2299,6 +2299,17 @@ document.getElementById('btn-month-next').addEventListener('click',()=>changeMon
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
   }, { passive: true });
+
+  // Verrouille les gestes clairement horizontaux : iOS ne doit pas
+  // déplacer physiquement toute la page pendant un changement de mois.
+  app.addEventListener('touchmove', e => {
+    if (e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+      e.preventDefault();
+    }
+  }, { passive: false });
 
   app.addEventListener('touchend', e => {
 
