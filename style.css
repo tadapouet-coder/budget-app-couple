@@ -279,3 +279,126 @@ input:focus, select:focus { outline:none; border-color:var(--green); }
   font-size:12px;
   text-align:right;
 }
+
+
+/* ============================================================
+   MOBILE BOTTOM NAV — refonte navigation
+   ============================================================ */
+.app {
+  padding-bottom: calc(82px + env(safe-area-inset-bottom));
+}
+
+.header {
+  z-index: 20;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions .icon-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+}
+
+.screen {
+  padding-bottom: 24px;
+}
+
+.nav.bottom-nav {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(100%, 430px);
+  height: calc(66px + env(safe-area-inset-bottom));
+  padding: 6px 8px env(safe-area-inset-bottom);
+  display: grid;
+  grid-template-columns: 1fr 1fr 72px 1fr 1fr;
+  align-items: end;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border-top: .5px solid var(--border);
+  border-bottom: 0;
+  box-shadow: 0 -8px 24px rgba(0,0,0,.07);
+  z-index: 40;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.bottom-nav .nav-btn {
+  height: 54px;
+  padding: 5px 2px 3px;
+  gap: 2px;
+  border: 0;
+  border-radius: 10px;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.bottom-nav .nav-btn i {
+  font-size: 21px;
+}
+
+.bottom-nav .nav-btn.active {
+  color: var(--green);
+  border-bottom-color: transparent;
+  background: var(--green-light);
+}
+
+.bottom-add {
+  align-self: start;
+  justify-self: center;
+  width: 58px;
+  height: 58px;
+  margin-top: -22px;
+  border: 4px solid var(--card);
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(29,158,117,.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-add i {
+  font-size: 30px;
+}
+
+.bottom-add:active {
+  transform: scale(.94);
+  background: var(--green-dark);
+}
+
+.settings-logout-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-logout-btn i {
+  margin-right: 6px;
+}
+
+@supports not (background: color-mix(in srgb, white 50%, transparent)) {
+  .nav.bottom-nav { background: var(--card); }
+}
