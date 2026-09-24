@@ -40,19 +40,18 @@
       </div>
       <button id="btn-month-next" class="month-nav-btn"><i class="ti ti-chevron-right"></i></button>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button id="btn-refresh" class="icon-btn" title="Actualiser"><i class="ti ti-refresh"></i></button>
-      <button id="btn-settings" class="icon-btn" title="Paramètres"><i class="ti ti-settings"></i></button>
-      <button id="btn-logout" class="icon-btn" title="Déconnexion"><i class="ti ti-logout"></i></button>
+    <div class="header-actions">
+      <button id="btn-settings" class="icon-btn" title="Paramètres" aria-label="Paramètres"><i class="ti ti-settings"></i></button>
     </div>
   </div>
 
-  <div class="nav">
-    <button class="nav-btn active" data-screen="dashboard"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
-    <button class="nav-btn" data-screen="transactions"><i class="ti ti-list"></i>Dépenses</button>
-    <button class="nav-btn" data-screen="stats"><i class="ti ti-chart-pie"></i>Stats</button>
-    <button class="nav-btn" data-screen="annuel"><i class="ti ti-calendar-stats"></i>Annuel</button>
-  </div>
+  <nav class="nav bottom-nav" aria-label="Navigation principale">
+    <button class="nav-btn active" data-screen="dashboard"><i class="ti ti-home"></i><span>Accueil</span></button>
+    <button class="nav-btn" data-screen="transactions"><i class="ti ti-list"></i><span>Dépenses</span></button>
+    <button class="bottom-add" id="bottom-add" aria-label="Ajouter une opération"><i class="ti ti-plus"></i></button>
+    <button class="nav-btn" data-screen="stats"><i class="ti ti-chart-pie"></i><span>Stats</span></button>
+    <button class="nav-btn" data-screen="annuel"><i class="ti ti-calendar-stats"></i><span>Année</span></button>
+  </nav>
 
   <!-- DASHBOARD -->
   <div id="screen-dashboard" class="screen active">
@@ -112,8 +111,6 @@
       <div class="chart-wrap"><canvas id="chart-depenses"></canvas></div>
       <div class="chart-legend" id="chart-legend"></div>
     </div>
-
-    <div class="fab"><button class="fab-btn" id="fab-dashboard"><i class="ti ti-plus"></i>Ajouter</button></div>
   </div>
 
   <!-- TRANSACTIONS -->
@@ -130,12 +127,6 @@
     <div class="budget-loading">Chargement...</div>
   </div>
 
-  <div class="fab">
-    <button class="fab-btn" id="fab-tx">
-      <i class="ti ti-plus"></i>Ajouter
-    </button>
-  </div>
-
 </div>
 
 
@@ -143,14 +134,12 @@
   <div id="screen-stats" class="screen">
     <div class="section-title">Dépenses par catégorie</div>
     <div class="budget-bars" id="stats-bars"><div class="budget-loading">Chargement...</div></div>
-    <div class="fab"><button class="fab-btn" id="fab-stats"><i class="ti ti-plus"></i>Ajouter</button></div>
   </div>
 
   <!-- ANNUEL -->
   <div id="screen-annuel" class="screen">
     <div class="section-title">Résumé 2026</div>
     <div id="annuel-content"><div class="budget-loading">Chargement...</div></div>
-    <div class="fab"><button class="fab-btn" id="fab-annuel"><i class="ti ti-plus"></i>Ajouter</button></div>
   </div>
 
 </div>
@@ -285,6 +274,7 @@
   <i class="ti ti-lock-off"></i> Réinitialiser les mots de passe profils
 </button>
     <button class="submit-btn" id="btn-save-settings"><i class="ti ti-check"></i> Enregistrer les paramètres</button>
+    <button class="settings-logout-btn" id="btn-logout" type="button"><i class="ti ti-logout"></i> Se déconnecter</button>
   </div>
 </div>
 
